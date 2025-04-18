@@ -128,7 +128,6 @@ const ChatWindow = ({ selectedChat }) => {
                   )}
                 </ListItem>
               );
-
             })
           )}
         </List>
@@ -142,6 +141,12 @@ const ChatWindow = ({ selectedChat }) => {
           fullWidth
           value={message}
           onChange={(e) => setMessage(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              sendMessage();
+            }
+          }}
           placeholder="Type a message..."
           sx={{
             borderRadius: "20px",

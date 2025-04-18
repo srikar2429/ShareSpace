@@ -53,7 +53,7 @@ const accessChat = async (req, res, next) => {
 //@description     Fetch all chats for a user
 //@route           GET /api/chat/
 //@access          Protected
-const fetchChats = async (req, res, next) => {
+const fetchChats = async (req, res) => {
   const chats = await Chat.find({
     users: { $elemMatch: { $eq: req.user._id } },
   })
@@ -73,40 +73,40 @@ const fetchChats = async (req, res, next) => {
 //@description     Create a New Group Chat
 //@route           POST /api/chat/group
 //@access          Protected
-const createGroupChat = async (req, res, next) => {
-  const { users, name, userId } = req.body;
+const createGroupChat = async (req, res) => {
+  const { users, name } = req.body;
 
-  if (!users || !name || !userId) {
+  if (!users || !name) {
     throw createHttpError(
       400,
-      "All fields (users, name, and userId) are required to create a group chat"
+      "All fields (users and name) are required to create a group chat"
     );
   }
+  console.log(users, 123);
+  //let userList = JSON.parse(users);
 
-  let userList = JSON.parse(users);
-
-  let groupMembers = userList.map((user) => ({
+  let groupMembers = users.map((user) => ({
     user: user,
     added: new Date().toISOString(),
   }));
 
-  groupMembers.push({ user: userId, added: new Date().toISOString() });
+  groupMembers.push({ user: req.user._id, added: new Date().toISOString() }); 
 
-  if (userList.length < 2) {
+  if (users.length < 2) {
     throw createHttpError(
       400,
       "At least two users are required to create a group chat"
     );
   }
 
-  userList.push(req.user);
+  users.push(req.user._id); 
 
   const groupChat = await Chat.create({
     chatName: name,
-    users: userList,
+    users: users,
     members: groupMembers,
     isGroupChat: true,
-    groupAdmin: req.user,
+    groupAdmin: req.user._id, 
   });
 
   const fullGroupChat = await Chat.findOne({ _id: groupChat._id })
@@ -115,6 +115,7 @@ const createGroupChat = async (req, res, next) => {
 
   return res.status(201).json(fullGroupChat);
 };
+
 
 //@description     Rename Group Chat
 //@route           PUT /api/chat/rename

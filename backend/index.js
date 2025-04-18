@@ -62,16 +62,27 @@ const io = new Server(server, {
   },
 });
 
-const userSocketMap = {}; 
+const userSocketMap = {};
+let onlineUsers = [];
 
 io.on("connection", (socket) => {
   console.log("⚡ New socket connection:", socket.id);
 
   socket.on("setup", (userData) => {
+    socket.userId = userData._id;
     userSocketMap[userData._id] = socket.id;
+    onlineUsers.push(userData._id);
+
     socket.join(userData._id);
     console.log("✅ User setup complete:", userData._id);
     socket.emit("connected");
+    console.log("🟢 Online users:", onlineUsers);
+    socket.emit("online-users", onlineUsers); 
+    socket.broadcast.emit("online-users", onlineUsers);
+  });
+
+  socket.on("get-online-users", () => {
+    socket.emit("online-users", onlineUsers);
   });
 
   socket.on("join chat", (chatId) => {
@@ -79,43 +90,58 @@ io.on("connection", (socket) => {
     console.log(`📥 User joined chat room: ${chatId}`);
   });
 
+  socket.on("new chat created", (newChat) => {
+    console.log("📦 New chat created:", newChat._id);
+
+    newChat.users.forEach((user) => {
+      if (user._id !== socket.userId) {
+        socket.to(user._id).emit("new chat created", newChat);
+      }
+    });
+  });
+
   socket.on("sendMessage", (data) => {
-    console.log(data);
     const {
       content,
-      sender: {_id: senderId },
+      sender: { _id: senderId },
       messageType,
       chat: { _id: chatId },
     } = data;
-
-    console.log("Message received to emit:", content);
 
     const newMessage = {
       sender: senderId,
       chat: chatId,
       content,
-      messageType: messageType || "text", 
+      messageType: messageType || "text",
     };
 
     socket.to(chatId).emit("newMessage", newMessage);
-
-    console.log("Message emitted to room:", chatId);
   });
 
+  socket.on("typing", ({ chatId, from }) => {
+    socket.to(chatId).emit("typing", { from });
+  });
+
+  socket.on("stop typing", ({ chatId, from }) => {
+    socket.to(chatId).emit("stop typing", { from });
+  });
 
   socket.on("leave chat", (chatId) => {
     socket.leave(chatId);
     console.log(`📥 User left chat room: ${chatId}`);
   });
 
-
   socket.on("disconnect", () => {
     console.log("❌ Disconnected:", socket.id);
+
     for (const userId in userSocketMap) {
       if (userSocketMap[userId] === socket.id) {
+        onlineUsers = onlineUsers.filter((userId) => userId !== socket.userId);
         delete userSocketMap[userId];
         break;
       }
     }
+    console.log("🟢 Online users after disconnecting:", onlineUsers);
+    io.emit("online-users", onlineUsers);
   });
 });

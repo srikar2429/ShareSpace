@@ -13,7 +13,7 @@ const googleAuthCallback = async (req, res) => {
   generateToken(res, req.user._id, req.user.username);
 
   // Redirect to frontend after successful login
-  res.redirect(`${env.CLIENT_URL}/dashboard`);
+  res.redirect(`${env.CLIENT_URL}/`);
 };
 
 export { googleAuthCallback }; 

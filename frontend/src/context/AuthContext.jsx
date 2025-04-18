@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import axios from "axios";
 import { useLoading } from "./LoadingContext";
+import socket from "../socket";
 
 const AuthContext = createContext();
 
@@ -38,6 +39,7 @@ export const AuthProvider = ({ children }) => {
         password,
       });
       setUser(data);
+      console.log(data);
     } finally {
       setLoading(false);
     }
@@ -63,6 +65,7 @@ export const AuthProvider = ({ children }) => {
     try {
       await axios.post("/api/users/logout");
       setUser(null);
+      socket.disconnect();
     } finally {
       setLoading(false);
     }

@@ -16,6 +16,20 @@ const Chat = () => {
   const [selectedChat, setSelectedChat] = useState(null);
 
   useEffect(() => {
+    socket.on("new chat created", (newChat) => {
+      setChats((prev) => {
+        const exists = prev.find((chat) => chat._id === newChat._id);
+        if (exists) return prev;
+        return [newChat, ...prev];
+      });
+    });
+
+    return () => {
+      socket.off("new chat created");
+    };
+  }, []);
+
+  useEffect(() => {
     const fetchChats = async () => {
       try {
         const token = Cookies.get("token");

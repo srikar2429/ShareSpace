@@ -12,14 +12,16 @@ function App() {
   const { user } = useAuth();
 
   useEffect(() => {
-    console.log("hi")
     if (user) {
-      console.log("1")
       socket.emit("setup", user);
       socket.on("connected", () => {
         console.log("Socket connected");
       });
     }
+
+    return () => {
+      socket.off("connected");
+    };
   }, [user]);
 
   return (

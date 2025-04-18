@@ -22,7 +22,7 @@ const Login = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (isAuthenticated) navigate("/dashboard");
+    if (isAuthenticated) navigate("/");
   }, [isAuthenticated, navigate]);
 
   const handleChange = (e) => {
@@ -34,7 +34,7 @@ const Login = () => {
     try {
       await login(form.email, form.password);
       showToast("Welcome back! 🎉", "success");
-      navigate("/dashboard");
+      navigate("/");
     } catch (err) {
       showToast(err.response?.data?.message || "Login failed!", "error");
     }

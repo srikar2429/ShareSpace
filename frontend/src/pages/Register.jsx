@@ -27,7 +27,7 @@ const Register = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (user) navigate("/dashboard");
+    if (user) navigate("/");
   }, [user, navigate]);
 
   const handleChange = (e) => {
@@ -39,7 +39,7 @@ const Register = () => {
     try {
       await register(form.name, form.username, form.email, form.password);
       showToast("Registration successful! 🎉", "success");
-      navigate("/profile");
+      navigate("/");
     } catch (err) {
       showToast(err.response?.data?.message || "Registration failed!", "error");
     }
