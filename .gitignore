@@ -6,3 +6,5 @@ frontend/env/.env
 
 backend/node_modules
 backend/env/.env
+
+secrets
