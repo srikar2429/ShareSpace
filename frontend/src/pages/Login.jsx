@@ -48,7 +48,6 @@ const Login = () => {
     <Container maxWidth="md" sx={{ mt: 10 }}>
       <Paper elevation={5} sx={{ borderRadius: 3, overflow: "hidden" }}>
         <Grid container>
-          {/* Left Panel */}
           <Grid
             item
             xs={12}
@@ -79,7 +78,6 @@ const Login = () => {
             </Typography>
           </Grid>
 
-          {/* Right Panel */}
           <Grid item xs={12} md={6}>
             <Box sx={{ p: 4, bgcolor: "background.paper" }}>
               <Typography
@@ -111,6 +109,16 @@ const Login = () => {
                     fullWidth
                     required
                   />
+
+                  <Box textAlign="right">
+                    <Link
+                      to="/forgot-password"
+                      style={{ fontSize: "0.9rem", color: "#1976d2" }}
+                    >
+                      Forgot Password?
+                    </Link>
+                  </Box>
+
                   <Button
                     variant="contained"
                     type="submit"

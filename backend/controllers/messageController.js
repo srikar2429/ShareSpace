@@ -22,7 +22,7 @@ const allMessages = async (req, res, next) => {
 //@route           POST /api/message/
 //@access          Protected
 const sendMessage = async (req, res, next) => {
-  const { content, chatId } = req.body;
+  const { content, chatId, messageType, file } = req.body;
 
   if (!content || !chatId) {
     return next(createHttpError(400, "Invalid data passed into request"));
@@ -30,34 +30,37 @@ const sendMessage = async (req, res, next) => {
 
   const newMessage = {
     sender: req.user._id,
-    content: content,
+    content,
     chat: chatId,
+    messageType,
+    ...(messageType === "file" && file ? { file } : {}),
   };
 
-  let message = await Message.create(newMessage);
+  try {
+    let message = await Message.create(newMessage);
 
-  if (!message) {
-    return next(createHttpError(500, "Failed to create message"));
+    message = await message.populate("sender", "name pic");
+    message = await message.populate("chat");
+    message = await User.populate(message, {
+      path: "chat.users",
+      select: "name pic email",
+    });
+
+    const updatedChat = await Chat.findByIdAndUpdate(chatId, {
+      latestMessage: message,
+    });
+
+    if (!updatedChat) {
+      return next(
+        createHttpError(500, "Failed to update chat with latest message")
+      );
+    }
+
+    res.status(200).json(message);
+  } catch (err) {
+    next(createHttpError(500, "Failed to send message"));
   }
-
-  message = await message.populate("sender", "name pic");
-  message = await message.populate("chat");
-  message = await User.populate(message, {
-    path: "chat.users",
-    select: "name pic email",
-  });
-
-  const updatedChat = await Chat.findByIdAndUpdate(chatId, {
-    latestMessage: message,
-  });
-
-  if (!updatedChat) {
-    return next(
-      createHttpError(500, "Failed to update chat with latest message")
-    );
-  }
-
-  res.status(200).json(message);
 };
+
 
 export { allMessages, sendMessage };

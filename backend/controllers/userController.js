@@ -3,6 +3,9 @@ import asyncHandler from "express-async-handler";
 import createHttpError from "http-errors";
 import generateToken from "../utils/generateToken.js";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
+import env from "../utils/validateEnv.js";
+import Email from "../utils/email.js";
 
 // @desc    Register user
 // @route   POST /api/users
@@ -17,6 +20,9 @@ const registerUser = asyncHandler(async (req, res) => {
   const user = await User.create({ name, username, email, password });
 
   if (!user) throw createHttpError(400, "Invalid user data");
+
+  const url = `${process.env.CLIENT_URL}/profile`;
+  await new Email(user, url).sendWelcome();
 
   generateToken(res, user._id, user.username);
 
@@ -182,6 +188,48 @@ const updateUserByAdmin = asyncHandler(async (req, res) => {
   res.status(200).json(updatedUser);
 });
 
+const forgotPassword = asyncHandler(async (req, res) => {
+  const user = await User.findOne({ email: req.body.email });
+  if (!user) throw createHttpError(404, "User not found");
+
+  const resetToken = user.createPasswordResetToken();
+  await user.save({ validateBeforeSave: false });
+
+  const resetUrl = `${env.CLIENT_URL}/reset-password/${resetToken}`;
+
+  new Email(user, resetUrl).sendPasswordReset();
+  res.status(200).json({
+    status: "success",
+    token: resetToken,
+    message: `Token sent to ${user.email}`,
+  });
+});
+
+
+const resetPassword = asyncHandler(async (req, res) => {
+  const hashedToken = crypto
+    .createHash("sha256")
+    .update(req.params.resettoken)
+    .digest("hex");
+
+  const user = await User.findOne({
+    passwordResetToken: hashedToken,
+    passwordResetExpires: { $gt: Date.now() },
+  });
+  if (!user) throw createHttpError(400, "Token is invalid or has expired");
+
+  user.password = req.body.password;
+  user.passwordResetToken = undefined;
+  user.passwordResetExpires = undefined;
+  await user.save();
+  const url = `${process.env.CLIENT_URL}/login`;
+  
+  res.status(200).json({
+    status: "success",
+    message: "Password reset successfully",
+  });
+});
+
 export {
   registerUser,
   authUser,
@@ -193,4 +241,7 @@ export {
   deleteUserByAdmin,
   updateUserByAdmin,
   allUsers,
+  forgotPassword,
+  resetPassword,
+
 };

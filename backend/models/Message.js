@@ -14,6 +14,13 @@ const messageSchema = mongoose.Schema(
       enum: ["text", "image", "video", "file"],
       default: "text",
     },
+    file: {
+      fileName: { type: String },
+      mimeType: { type: String },
+      deliveredFileId: { type: String },
+      viewUrl: { type: String },
+      downloadUrl: { type: String },
+    },
     seenBy: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     createdAt: { type: Date, default: Date.now },
   },

@@ -5,22 +5,32 @@ import {
   IconButton,
   List,
   ListItem,
-  ListItemText,
   Typography,
   Avatar,
   Divider,
+  Tooltip,
+  MenuItem,
+  Button,
+  Stack,
 } from "@mui/material";
+import AttachFileIcon from "@mui/icons-material/AttachFile";
 import SendIcon from "@mui/icons-material/Send";
+import VideoCallIcon from "@mui/icons-material/VideoCall";
 import axios from "axios";
 import Cookies from "js-cookie";
 import socket from "../socket";
 import { useAuth } from "../context/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 const ChatWindow = ({ selectedChat }) => {
   const { user } = useAuth();
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [docs, setDocs] = useState([]);
+  const [selectedDoc, setSelectedDoc] = useState("");
+  const [newDocName, setNewDocName] = useState("");
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!selectedChat) return;
@@ -52,6 +62,23 @@ const ChatWindow = ({ selectedChat }) => {
     };
   }, [selectedChat]);
 
+  useEffect(() => {
+    const fetchDocs = async () => {
+      if (!selectedChat) return;
+      try {
+        const token = Cookies.get("token");
+        const res = await axios.get(`/api/docs/chat/${selectedChat._id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setDocs(res.data);
+      } catch (err) {
+        console.error("Error fetching docs:", err);
+      }
+    };
+
+    fetchDocs();
+  }, [selectedChat]);
+
   const sendMessage = async () => {
     if (message.trim()) {
       try {
@@ -64,11 +91,87 @@ const ChatWindow = ({ selectedChat }) => {
 
         await socket.emit("sendMessage", response.data);
 
-        setMessages((prevMessages) => [...prevMessages, { ...response.data }]);
+        setMessages((prevMessages) => [...prevMessages, response.data]);
         setMessage("");
       } catch (err) {
         console.error("Error sending message", err);
       }
+    }
+  };
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file || !selectedChat) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("chatId", selectedChat._id);
+
+    try {
+      const token = Cookies.get("token");
+
+      const res = await axios.post("/api/files/upload", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const uploadedFile = res.data;
+
+      const messageRes = await axios.post(
+        "/api/message",
+        {
+          chatId: selectedChat._id,
+          content: uploadedFile.fileName,
+          messageType: "file",
+          file: {
+            fileName: uploadedFile.fileName,
+            mimeType: uploadedFile.mimeType,
+            deliveredFileId: uploadedFile.deliveredFileId,
+            viewUrl: uploadedFile.viewUrl,
+            downloadUrl: uploadedFile.downloadUrl,
+          },
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      socket.emit("sendMessage", messageRes.data);
+      setMessages((prev) => [...prev, messageRes.data]);
+    } catch (err) {
+      console.error("Error uploading/saving file message:", err);
+    }
+  };
+
+  const handleCreateDoc = async () => {
+    if (!newDocName.trim()) return;
+    try {
+      const token = Cookies.get("token");
+      const res = await axios.post(
+        "/api/docs",
+        { title: newDocName, chatId: selectedChat._id },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setDocs((prev) => [...prev, res.data]);
+      console.log(docs);
+      setNewDocName("");
+    } catch (err) {
+      console.error(
+        "Error creating doc:",
+        err.response ? err.response.data : err.message
+      );
+    }
+  };
+
+  const handleDocSelect = (docId) => {
+    console.log(docId);
+    setSelectedDoc(docId);
+    if (docId) {
+      navigate(`/document/${docId}`);
     }
   };
 
@@ -78,67 +181,162 @@ const ChatWindow = ({ selectedChat }) => {
         height: "100%",
         display: "flex",
         flexDirection: "column",
-        backgroundColor: "#f4f6f9",
+        backgroundColor: "#f0f2f5",
+        borderRadius: 2,
+        boxShadow: 3,
       }}
     >
-      {/* Messages */}
-      <Box sx={{ flex: 1, overflowY: "auto", padding: 2 }}>
-        <List sx={{ paddingBottom: "10px" }}>
-          {loading ? (
-            <Typography>Loading messages...</Typography>
-          ) : (
-            messages.map((msg, idx) => {
-              const isOwnMessage = msg.sender._id === user._id;
-              return (
-                <ListItem
-                  key={idx}
+      {selectedChat && (
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: { xs: "column", sm: "row" },
+            alignItems: "center",
+            p: 2,
+            gap: 2,
+            borderBottom: "1px solid #ddd",
+            backgroundColor: "#fff",
+          }}
+        >
+          <TextField
+            size="small"
+            label="New Document Name"
+            value={newDocName}
+            onChange={(e) => setNewDocName(e.target.value)}
+            sx={{ flex: 1, minWidth: 200 }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleCreateDoc();
+            }}
+          />
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleCreateDoc}
+            sx={{ height: 40 }}
+          >
+            Create Doc
+          </Button>
+
+          <TextField
+            select
+            size="small"
+            label="Open Document"
+            value={selectedDoc || ""}
+            onChange={(e) => handleDocSelect(e.target.value)}
+            sx={{ width: 250 }}
+            placeholder="Select Document"
+          >
+            <MenuItem value="">-- Select a document --</MenuItem>
+            {docs.map((doc) => (
+              <MenuItem key={doc._id} value={doc._id}>
+                <Typography sx={{ color: "#000" }}>{doc.name}</Typography>
+              </MenuItem>
+            ))}
+          </TextField>
+        </Box>
+      )}
+
+      <Box
+        sx={{
+          flex: 1,
+          overflowY: "auto",
+          padding: 2,
+          bgcolor: "#fff",
+          borderRadius: "0 0 0 8px",
+          display: "flex",
+          flexDirection: "column",
+          gap: 1,
+        }}
+      >
+        {loading ? (
+          <Typography align="center" sx={{ mt: 2 }}>
+            Loading messages...
+          </Typography>
+        ) : messages.length === 0 ? (
+          <Typography align="center" sx={{ mt: 2, color: "gray" }}>
+            No messages yet. Start the conversation!
+          </Typography>
+        ) : (
+          messages.map((msg, idx) => {
+            const isOwn = msg.sender._id === user._id;
+            const isFile = msg.messageType === "file";
+
+            return (
+              <Box
+                key={idx}
+                sx={{
+                  display: "flex",
+                  justifyContent: isOwn ? "flex-end" : "flex-start",
+                  mb: 1,
+                }}
+              >
+                {!isOwn && (
+                  <Avatar
+                    src={msg.sender.avatarUrl}
+                    sx={{ width: 32, height: 32, mr: 1, alignSelf: "flex-end" }}
+                    alt={msg.sender.name || "User"}
+                  />
+                )}
+
+                <Box
                   sx={{
-                    display: "flex",
-                    justifyContent: isOwnMessage ? "flex-end" : "flex-start",
-                    alignItems: "center",
-                    marginBottom: 1,
+                    bgcolor: isOwn ? "#0b81ff" : "#e0e0e0",
+                    color: isOwn ? "#fff" : "#000",
+                    p: 1.2,
+                    borderRadius: 2,
+                    maxWidth: "70%",
+                    fontSize: "0.9rem",
+                    boxShadow: isOwn
+                      ? "0 2px 8px rgb(11 129 255 / 0.4)"
+                      : "0 2px 8px rgb(0 0 0 / 0.1)",
+                    wordBreak: "break-word",
+                    cursor: isFile ? "pointer" : "default",
+                    textDecoration: isFile ? "underline" : "none",
                   }}
                 >
-                  {!isOwnMessage && (
-                    <Avatar
-                      sx={{ width: 30, height: 30, marginRight: 1 }}
-                      src={msg.sender.avatarUrl}
-                    />
+                  {isFile ? (
+                    <a
+                      href={msg.file?.viewUrl || msg.file?.downloadUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        color: isOwn ? "#fff" : "#000",
+                        textDecoration: "none",
+                      }}
+                    >
+                      📎 {msg.content || "File"}
+                    </a>
+                  ) : (
+                    msg.content
                   )}
+                </Box>
 
-                  <Box
-                    sx={{
-                      backgroundColor: isOwnMessage ? "#007bff" : "#e9ecef",
-                      color: isOwnMessage ? "#fff" : "#000",
-                      padding: "8px 12px",
-                      borderRadius: "20px",
-                      maxWidth: "60%",
-                      wordWrap: "break-word",
-                      textAlign: "left",
-                    }}
-                  >
-                    {msg.content}
-                  </Box>
-
-                  {isOwnMessage && (
-                    <Avatar
-                      sx={{ width: 30, height: 30, marginLeft: 1 }}
-                      src={msg.sender.avatarUrl}
-                    />
-                  )}
-                </ListItem>
-              );
-            })
-          )}
-        </List>
+                {isOwn && (
+                  <Avatar
+                    src={msg.sender.avatarUrl}
+                    sx={{ width: 32, height: 32, ml: 1, alignSelf: "flex-end" }}
+                    alt={msg.sender.name || "User"}
+                  />
+                )}
+              </Box>
+            );
+          })
+        )}
       </Box>
 
-      <Divider sx={{ marginBottom: 1 }} />
+      <Divider />
 
-      <Box sx={{ display: "flex", alignItems: "center", padding: "10px" }}>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          p: 1.5,
+          bgcolor: "#fff",
+          borderRadius: "0 0 8px 8px",
+          gap: 1,
+        }}
+      >
         <TextField
-          variant="outlined"
-          fullWidth
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           onKeyDown={(e) => {
@@ -148,30 +346,50 @@ const ChatWindow = ({ selectedChat }) => {
             }
           }}
           placeholder="Type a message..."
+          fullWidth
+          size="medium"
+          multiline
+          maxRows={4}
           sx={{
-            borderRadius: "20px",
-            marginRight: 2,
             "& .MuiOutlinedInput-root": {
-              borderRadius: "20px",
-            },
-            "& .MuiOutlinedInput-input": {
-              padding: "10px",
+              borderRadius: "24px",
+              fontSize: "1rem",
             },
           }}
         />
+
+        <input
+          id="file-upload"
+          type="file"
+          hidden
+          onChange={handleFileUpload}
+          accept="*"
+        />
+        <label htmlFor="file-upload">
+          <IconButton color="primary" component="span">
+            <AttachFileIcon />
+          </IconButton>
+        </label>
+
         <IconButton
-          onClick={sendMessage}
           color="primary"
-          sx={{
-            borderRadius: "50%",
-            backgroundColor: "#fff",
-            "&:hover": {
-              backgroundColor: "#eee",
-            },
-          }}
+          onClick={sendMessage}
+          disabled={!message.trim()}
+          sx={{ ml: 0.5 }}
         >
           <SendIcon />
         </IconButton>
+
+        {selectedChat && (
+          <Tooltip title="Join Video Call">
+            <IconButton
+              onClick={() => navigate(`/video-call/${selectedChat._id}`)}
+              color="secondary"
+            >
+              <VideoCallIcon />
+            </IconButton>
+          </Tooltip>
+        )}
       </Box>
     </Box>
   );

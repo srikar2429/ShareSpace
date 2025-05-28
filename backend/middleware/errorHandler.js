@@ -1,4 +1,4 @@
-const errorHandler = (err, req, res, next) => {
+const errorHandler = (err, req, res, next) => {  
   // Default values for error status and message
   const status = err.status || 500;
 
@@ -10,12 +10,19 @@ const errorHandler = (err, req, res, next) => {
     error.status = 404;
   }
 
+  if (err.name === "validationError") {
+    const errors = Object.values(err.errors).map((val) => val.message);
+    error.message = errors;
+    error.status = 400;
+  }
+
   // Send the custom error response
   res.status(error.status || status).json({
     status: error.status || status,
     message: error.message || "Something went wrong",
     stack: process.env.NODE_ENV === "production" ? null : err.stack,
   });
+  
 };
 
 export default errorHandler;

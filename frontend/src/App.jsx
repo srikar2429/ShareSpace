@@ -3,6 +3,10 @@ import Login from "./pages/Login";
 import Register from "./pages/Register.jsx";
 import Profile from "./pages/Profile.jsx";
 import Chat from "./pages/Chat.jsx";
+import ForgotPassword from "./components/forgotPassword.jsx";
+import ResetPassword from "./components/resetPassword.jsx";
+import VideoCall from "./components/videoCall.jsx";
+import CollaborativeEditor from "./pages/CollaborativeEditor.jsx";
 import Loader from "./components/Loader";
 import socket from "./socket.js";
 import { useAuth } from "./context/AuthContext";
@@ -32,6 +36,10 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/chat" element={<Chat />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password/:token" element={<ResetPassword />} />
+        <Route path="/video-call/:chatId" element={<VideoCall />} />
+        <Route path="/document/:id" element={<CollaborativeEditor />} />
       </Routes>
     </Router>
   );
