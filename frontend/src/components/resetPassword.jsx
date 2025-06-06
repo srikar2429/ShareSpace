@@ -29,7 +29,7 @@ const ResetPassword = () => {
     e.preventDefault();
     try {
       await axios.patch(
-        `http://localhost:5000/api/users/resetPassword/${token}`,
+        `http://nginx:8080/api/users/resetPassword/${token}`,
         form
       );
       showToast("Password reset successful! 🎉", "success");
