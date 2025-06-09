@@ -46,7 +46,7 @@ const Register = () => {
   };
 
   const handleGoogle = () => {
-    window.location.href = "http://nginx:8080/api/auth/google";
+    window.location.href = "http://localhost:5000/api/auth/google";
   };
 
   return (

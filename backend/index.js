@@ -210,6 +210,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("get-document", async (docId) => {
+    console.log(`📄 User requested document: ${docId}`);
     socket.join(docId);
     socket.docId = docId;
 

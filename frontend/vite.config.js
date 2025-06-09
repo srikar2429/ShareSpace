@@ -7,7 +7,7 @@ export default defineConfig({
   server: {
     host: true,
     proxy: {
-      "/api": "http://nginx:8080",
+      "/api": "http://localhost:5000",
     },
   },
 });
